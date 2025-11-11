@@ -257,7 +257,7 @@ func (h *histogram) String() string {
 func (h *histogram) Reset() {
 	h.Lock()
 	defer h.Unlock()
-	h.bins = nil
+	h.bins = h.bins[:0]
 	h.total = 0
 }
 
@@ -269,7 +269,12 @@ func (h *histogram) Add(n float64) {
 	newbin := bin{value: n, count: 1}
 	for i := range h.bins {
 		if h.bins[i].value > n {
-			h.bins = append(h.bins[:i], append([]bin{newbin}, h.bins[i:]...)...)
+			// heap optimization, append empty slot and rotate. As maxBins is small, it's much cheaper than gc
+			h.bins = append(h.bins, bin{})
+
+			// shift elements to make space for newbin
+			copy(h.bins[i+1:], h.bins[i:])
+			h.bins[i] = newbin
 			return
 		}
 	}
@@ -303,7 +308,8 @@ func (h *histogram) trim() {
 			value: (h.bins[i-1].value*h.bins[i-1].count + h.bins[i].value*h.bins[i].count) / count,
 			count: count,
 		}
-		h.bins = append(h.bins[:i-1], h.bins[i:]...)
+		copy(h.bins[i-1:], h.bins[i:]) // it's faster to copy than to allocate new slices
+		h.bins = h.bins[:len(h.bins)-1]
 		h.bins[i-1] = merged
 	}
 }
