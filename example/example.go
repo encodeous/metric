@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/zserge/metric"
+	"github.com/encodeous/metric"
 )
 
 func fibrec(n int) int {
